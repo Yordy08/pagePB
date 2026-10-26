@@ -1,0 +1,158 @@
+<script setup lang="ts">
+const route = useRoute()
+const rawQuery = (key: string) => typeof route.query[key] === 'string' ? route.query[key] as string : ''
+const titleFromSlug = String(route.params.slug).split('-').filter(Boolean).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+const title = computed(() => rawQuery('title') || titleFromSlug)
+const category = computed(() => rawQuery('category') || 'Actualidad')
+const image = computed(() => rawQuery('image') || 'https://burbujapolitica.com/wp-content/uploads/2026/10/5116624690855218518_121-1024x576.jpg')
+const date = computed(() => {
+  const value = rawQuery('date') || '26 oct 2026'
+  const months: Record<string, string> = { ene: 'enero', feb: 'febrero', mar: 'marzo', abr: 'abril', may: 'mayo', jun: 'junio', jul: 'julio', ago: 'agosto', sep: 'septiembre', oct: 'octubre', nov: 'noviembre', dic: 'diciembre' }
+  const match = value.match(/^(\d{1,2})\s+([a-záéíóú]+)\s+(\d{4})$/i)
+  return match ? `${months[match[2].slice(0, 3).toLowerCase()] || match[2]} ${match[1]}, ${match[3]}` : value
+})
+const summary = computed(() => rawQuery('summary') || `Conoce los detalles y el contexto de esta noticia de ${category.value}.`)
+const key = (value: string) => value.toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+const incomingBody = computed<string[]>(() => {
+  const body = rawQuery('body')
+  if (!body) return []
+  try {
+    const parsed = JSON.parse(body)
+    if (Array.isArray(parsed)) return parsed.filter((paragraph): paragraph is string => typeof paragraph === 'string' && !!paragraph.trim())
+  } catch {
+    // Text supplied from a temporary dashboard publication.
+  }
+  return body.split(/\n\s*\n/).filter(Boolean)
+})
+const bodyParagraphs = computed(() => incomingBody.value.length ? incomingBody.value : [
+  summary.value,
+  `La noticia forma parte de los temas de ${category.value.toLocaleLowerCase()} que tienen impacto en las comunidades y en la conversación pública. Esta cobertura organiza los datos principales para ofrecer una lectura clara de lo ocurrido.`,
+  'El seguimiento de esta información incluye los antecedentes, las voces involucradas y los próximos pasos que se conozcan. Burbuja Política continuará actualizando el contexto conforme haya nuevos datos.'
+])
+const categoryPath = computed(() => {
+  const slug = key(category.value)
+  const paths: Record<string, string> = {
+    'politica-nacion': '/category/politica-nacion/',
+    'politica-cordoba': '/category/politica-cordoba/',
+    'politica-region': '/category/politica-region/',
+    'politica-internacional': '/category/politica-internacional/',
+    internacional: '/category/politica-internacional/',
+    opinion: '/category/opinion/',
+    ambiente: '/category/ambiente/',
+    ambiental: '/category/ambiente/',
+    boletines: '/category/boletines/',
+    cronicas: '/category/cronicas/'
+  }
+  return paths[slug] || '/'
+})
+const articleLink = (story: { title: string; category: string; image: string; date: string; summary: string; body?: string[] }) => ({
+  path: `/noticia/${key(story.title)}/`,
+  query: { title: story.title, category: story.category, image: story.image, date: story.date, summary: story.summary, body: story.body ? JSON.stringify(story.body) : '' }
+})
+const categories = ['Ambiente', 'Boletines', 'Crónicas', 'Ojo a los medios', 'Opinión', 'Política Córdoba', 'Política Internacional', 'Política Nación', 'Política Región']
+const archiveMonths = ['octubre 2026', 'septiembre 2026', 'agosto 2026', 'julio 2026', 'junio 2026', 'mayo 2026', 'abril 2026', 'marzo 2026', 'febrero 2026', 'enero 2026', 'diciembre 2025', 'noviembre 2025']
+const recentStories = [
+  { title: 'Con la presencia del vicepresidente José Manuel Restrepo, el ICETEX lanzará su nueva oferta de crédito con beneficios especiales', category: 'Política Nación', date: '26 oct 2026', summary: 'La entidad presentará nuevas alternativas de financiación y beneficios para estudiantes.', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/5116624690855218518_121-1024x576.jpg' },
+  { title: 'Mindefensa confirma la llegada de militares de EE. UU. a Tolemaida para el entrenamiento Vanguardia del Sur 2026', category: 'Política Nación', date: '26 oct 2026', summary: 'El anuncio se integra a la agenda nacional de defensa y cooperación.', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/opinion-1-1024x576.jpg' },
+  { title: 'ELN entrega a la Defensoría del Pueblo a menor retenida en zona rural del Cauca', category: 'Política Nación', date: '26 oct 2026', summary: 'La Defensoría acompaña el proceso y realiza seguimiento a la situación.', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/Web-47_5-1024x576.jpg' },
+  { title: 'Joven universitaria muere en siniestro vial entre Ovejas y El Carmen de Bolívar', category: 'Política Región', date: '26 oct 2026', summary: 'La comunidad expresa sus condolencias y las autoridades investigan el hecho.', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/Web-45_5-1024x576.jpg' },
+  { title: 'La Policía Nacional en Montería evocó el primer Día de la Mujer Policía', category: 'Boletines', date: '26 oct 2026', summary: 'Una jornada reconoció la vocación y el servicio de las mujeres policías.', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/image_2026-10-26_07-55-49-1024x768.jpg' }
+]
+const relatedByCategory: Record<string, Array<{ title: string; category: string; date: string; image: string; summary: string }>> = {
+  ambiente: [
+    { title: 'Montería bajo el agua: precipitaciones dejan vehículos atrapados y afectaciones en conjuntos residenciales', category: 'Ambiente', date: '24 oct 2026', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/photo_2026-10-22_23-08-38-1024x689.jpg', summary: 'Las lluvias dejan afectaciones en varios sectores de Montería.' },
+    { title: 'Gobernación de Córdoba hace un llamado a extremar precauciones durante las lluvias', category: 'Ambiente', date: '24 oct 2026', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/Web-45_5-1024x576.jpg', summary: 'Las autoridades recomiendan seguir los pronósticos y atender las indicaciones preventivas.' },
+    { title: 'Alcaldía de Montería advierte sobre posible reactivación de lluvias', category: 'Ambiente', date: '22 oct 2026', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/image_2026-10-26_07-55-49-1024x768.jpg', summary: 'Se recomienda estar atentos a la evolución de las condiciones climáticas.' }
+  ]
+}
+const moreStories = computed(() => relatedByCategory[key(category.value)] || (key(category.value) === 'ambiental' ? relatedByCategory.ambiente : recentStories.slice(1, 4).map(story => ({ ...story, summary: 'Lee los detalles y el contexto de esta noticia.' }))))
+const recommendedStories = [
+  ...recentStories.slice(0, 4).map(story => ({ ...story, summary: 'Información y contexto de la actualidad nacional y regional.' })),
+  { title: 'La Policía Nacional en Montería evocó el primer Día de la Mujer Policía, exaltando su legado y vocación de servicio', category: 'Boletines', date: '26 oct 2026', image: 'https://burbujapolitica.com/wp-content/uploads/2026/10/image_2026-10-26_07-55-49-1024x768.jpg', summary: 'Un reconocimiento a la trayectoria y el servicio de las mujeres policías.' }
+]
+const searchTerm = ref('')
+const filteredRecentStories = computed(() => recentStories.filter(story => story.title.toLocaleLowerCase().includes(searchTerm.value.toLocaleLowerCase())))
+const articleUrl = computed(() => import.meta.client ? window.location.href : '')
+const copied = ref(false)
+
+useSeoMeta({
+  title: () => `${title.value} | Burbuja Política`,
+  description: () => summary.value,
+  ogTitle: () => title.value,
+  ogDescription: () => summary.value,
+  ogImage: () => image.value
+})
+
+function shareOn(network: 'facebook' | 'x' | 'whatsapp') {
+  const url = encodeURIComponent(articleUrl.value)
+  const text = encodeURIComponent(title.value)
+  const links = {
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+    x: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+    whatsapp: `https://api.whatsapp.com/send?text=${text}%20${url}`
+  }
+  window.open(links[network], '_blank', 'noopener,noreferrer,width=640,height=520')
+}
+
+function categoryUrl(name: string) {
+  const paths: Record<string, string> = {
+    ambiente: '/category/ambiente/', boletines: '/category/boletines/', cronicas: '/category/cronicas/', 'ojo-a-los-medios': '/category/ojo-a-los-medios/',
+    opinion: '/category/opinion/',
+    'politica-cordoba': '/category/politica-cordoba/', 'politica-internacional': '/category/politica-internacional/',
+    'politica-nacion': '/category/politica-nacion/', 'politica-region': '/category/politica-region/'
+  }
+  return paths[key(name)] || '/'
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(articleUrl.value)
+    copied.value = true
+    window.setTimeout(() => { copied.value = false }, 2200)
+  } catch {
+    window.prompt('Copia el enlace de esta noticia:', articleUrl.value)
+  }
+}
+
+async function shareArticle() {
+  if (navigator.share) {
+    await navigator.share({ title: title.value, text: summary.value, url: articleUrl.value })
+  } else {
+    await copyLink()
+  }
+}
+</script>
+
+<template>
+  <main class="wrap article-page">
+    <nav class="article-breadcrumb" aria-label="Migas de pan"><NuxtLink to="/">Inicio</NuxtLink><span>›</span><NuxtLink :to="categoryPath">{{ category }}</NuxtLink><span>›</span><span class="breadcrumb-current">Noticia</span></nav>
+    <div class="article-layout">
+      <article class="article-main">
+        <header class="article-header"><span class="tag article-category">{{ category }}</span><h1>{{ title }}</h1><div class="article-byline"><span class="author-avatar">BP</span><span><b>Redacción Burbuja Política</b><small>{{ date }}</small></span></div></header>
+        <figure class="article-hero"><img :src="image" :alt="title"><figcaption>{{ title }}</figcaption></figure>
+        <div class="article-body"><p v-for="(paragraph, index) in bodyParagraphs" :key="paragraph" :class="{ 'article-lead': index === 0 }">{{ paragraph }}</p><div class="article-end"><span>—</span><b>Burbuja Política</b><small>Sabemos de política</small></div></div>
+        <div class="article-share"><b>Compartir esta noticia</b><button class="share-x" aria-label="Compartir en Twitter" @click="shareOn('x')">𝕏 <span>Twitter</span></button><button class="share-facebook" aria-label="Compartir en Facebook" @click="shareOn('facebook')">f <span>Facebook</span></button><button class="share-whatsapp" aria-label="Compartir por WhatsApp" @click="shareOn('whatsapp')">◉ <span>WhatsApp</span></button><button class="share-copy" @click="copyLink">{{ copied ? '✓ Copiado' : '↗ Copiar enlace' }}</button></div>
+        <section class="more-stories"><div class="related-heading"><div><span class="eyebrow">SIGUE LEYENDO</span><h2>Más historias</h2></div><NuxtLink :to="categoryPath">{{ category }} →</NuxtLink></div><NuxtLink v-for="story in moreStories" :key="story.title" :to="articleLink(story)" class="more-story-row"><img :src="story.image" :alt="story.title"><div><span class="tag">{{ story.category }}</span><h3>{{ story.title }}</h3><p>{{ story.summary }}</p><small>{{ story.date }}</small></div></NuxtLink></section>
+      </article>
+      <aside class="article-sidebar">
+        <section class="sidebar-widget search-widget"><h2>Buscar</h2><form @submit.prevent><input v-model="searchTerm" placeholder="Buscar …" aria-label="Buscar noticias"><button aria-label="Buscar">⌕</button></form></section>
+        <section class="sidebar-widget"><h2>Entradas recientes</h2><div class="recent-list"><NuxtLink v-for="story in filteredRecentStories" :key="story.title" :to="articleLink(story)" class="recent-item"><img :src="story.image" :alt="story.title"><span><b>{{ story.title }}</b><small>{{ story.summary }}</small><small class="recent-date">{{ story.date }}</small></span></NuxtLink><p v-if="!filteredRecentStories.length" class="sidebar-empty">No hay resultados para esa búsqueda.</p></div></section>
+        <details class="sidebar-widget archive-widget"><summary>Archivos</summary><ul><li v-for="month in archiveMonths" :key="month"><a href="#">{{ month }}</a></li></ul><button class="archive-more" @click.prevent="archiveMonths.push('octubre 2025')">Ver más archivos +</button></details>
+        <section class="sidebar-widget"><h2>Categorías</h2><ul class="category-sidebar-list"><li v-for="name in categories" :key="name"><NuxtLink :to="categoryUrl(name)">{{ name }}</NuxtLink></li></ul></section>
+        <section class="sidebar-widget sidebar-about"><span class="about-bp">BP</span><b>Burbuja Política</b><p>Información, análisis y voces del territorio.</p></section>
+      </aside>
+    </div>
+    <section class="recommended-section"><div class="related-heading"><div><span class="eyebrow">MÁS ACTUALIDAD</span><h2>Te pueden interesar</h2></div><NuxtLink to="/">Ver portada →</NuxtLink></div><div class="recommended-grid"><NuxtLink v-for="story in recommendedStories" :key="story.title" :to="articleLink(story)" class="recommended-card"><div class="recommended-image"><img :src="story.image" :alt="story.title" loading="lazy"><span class="tag">{{ story.category }}</span></div><div class="recommended-copy"><h3>{{ story.title }}</h3><p>{{ story.summary }}</p><small>{{ story.date }}</small></div></NuxtLink></div></section>
+  </main>
+</template>
+
+<style scoped>
+.article-page{padding-top:23px;padding-bottom:70px}.article-breadcrumb{display:flex;align-items:center;gap:9px;margin-bottom:23px;color:#8a8f95;font-size:10px}.article-breadcrumb a{color:#bb1919;font-weight:700}.breadcrumb-current{color:#555}.article-layout{display:grid;grid-template-columns:minmax(0,820px) 270px;gap:36px;justify-content:center;align-items:start}.article-main{min-width:0}.article-header{padding-bottom:18px}.article-category{display:inline-block;margin-bottom:9px;padding:5px 8px;background:#bb1919;color:#fff;font-size:9px}.article-header h1{margin:0;color:#24272b;font:800 clamp(31px,4.2vw,49px)/1.04 'Source Sans 3','Source Sans Pro',Arial,sans-serif;letter-spacing:-.025em}.article-deck{margin:12px 0 18px;color:#686d73;font:400 16px/1.5 'Lato',Arial,sans-serif}.article-byline{display:flex;align-items:center;gap:10px}.author-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#bb1919;color:white;font:800 10px 'Source Sans 3',sans-serif}.article-byline b,.article-byline small{display:block}.article-byline b{color:#35393e;font-size:10px}.article-byline small{margin-top:3px;color:#858a90;font-size:9px}.article-byline small i{padding:0 4px;color:#bb1919}.article-demo-label{margin-left:auto;padding:5px 7px;border:1px solid #ead8d8;border-radius:3px;color:#9a3030;font:800 7px 'Source Sans 3',sans-serif;letter-spacing:.08em}.article-hero{margin:0;background:#f2f2f2}.article-hero img{display:block;width:100%;max-height:470px;object-fit:cover}.article-hero figcaption{padding:7px 10px;color:#72777c;font-size:8px}.article-hero figcaption span{color:#9a9ea3}.article-share{display:flex;align-items:center;gap:7px;padding:13px 0;border-bottom:1px solid #e8e8e8}.article-share>b{margin-right:6px;color:#555;font-size:9px}.article-share button{height:29px;display:flex;align-items:center;gap:6px;padding:0 9px;border:1px solid #e3e3e3;border-radius:4px;background:white;color:#42474d;font-size:9px;cursor:pointer}.article-share button:hover{border-color:#bb1919;color:#bb1919}.article-share .share-facebook{background:#bb1919;border-color:#bb1919;color:#fff;font-weight:700}.share-x{font-weight:700}.share-native{margin-left:auto;font-weight:800}.article-body{max-width:700px;margin:0 auto;padding:24px 0 10px;color:#373b40;font:16px/1.85 'Lato',Arial,sans-serif}.article-body p{margin:0 0 19px}.article-body p.article-lead{color:#2f3338;font-size:19px;font-weight:700;line-height:1.55}.article-body h2{margin:30px 0 10px;color:#25292e;font:700 26px 'Source Sans 3',sans-serif}.article-body blockquote{margin:26px 0;padding:13px 18px;border-left:3px solid #bb1919;background:#faf3f3;color:#3e3434;font:600 18px/1.5 'Source Sans 3',sans-serif}.article-body .article-end{display:flex;flex-direction:column;align-items:center;margin:34px 0 4px;color:#bb1919}.article-end span{font:28px Georgia,serif}.article-end b{font:700 13px 'Source Sans 3',sans-serif;color:#333}.article-end small{margin-top:3px;color:#888;font-size:8px;letter-spacing:.1em;text-transform:uppercase}.article-related{margin-top:24px;padding-top:21px;border-top:1px solid #e6e6e6}.related-heading{display:flex;align-items:end;justify-content:space-between;margin-bottom:13px}.related-heading h2{margin:4px 0 0;font:700 23px 'Source Sans 3',sans-serif}.related-heading>a{color:#bb1919;font-size:9px;font-weight:700}.related-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.related-card{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;align-items:center;padding:8px;border:1px solid #e9e9e9;border-radius:4px}.related-card img{width:100px;height:70px;object-fit:cover}.related-card .tag{font-size:7px}.related-card h3{margin:5px 0 0;color:#333;font:700 13px/1.15 'Source Sans 3',sans-serif}.article-aside{position:sticky;top:75px;display:grid;gap:14px}.aside-share-card,.aside-about{padding:17px;border:1px solid #e8e8e8;border-radius:5px;background:#fff}.aside-share-card{border-top:3px solid #bb1919}.aside-share-card .eyebrow{color:#bb1919}.aside-share-card h2{margin:8px 0 5px;color:#292d31;font:700 19px/1.1 'Source Sans 3',sans-serif}.aside-share-card p,.aside-about p{color:#7b8086;font-size:9px;line-height:1.6}.aside-share-card button{width:100%;height:31px;display:flex;align-items:center;gap:9px;margin-top:7px;padding:0 9px;border:1px solid #e6e6e6;border-radius:4px;background:white;color:#bb1919;font-weight:700;font-size:9px;text-align:left;cursor:pointer}.aside-share-card button span{color:#4d5258;font-weight:500}.aside-share-card button:hover{border-color:#bb1919;background:#fff8f8}.aside-about{display:flex;flex-direction:column;align-items:flex-start}.about-bp{width:35px;height:35px;display:grid;place-items:center;margin-bottom:9px;border-radius:50%;background:#bb1919;color:#fff;font:800 10px 'Source Sans 3',sans-serif}.aside-about>b{font:700 13px 'Source Sans 3',sans-serif}.aside-about>a{margin-top:4px;color:#bb1919;font-size:9px;font-weight:700}
+@media(max-width:900px){.article-layout{grid-template-columns:minmax(0,1fr) 230px;gap:20px}.article-header h1{font-size:38px}.related-card{grid-template-columns:80px minmax(0,1fr)}.related-card img{width:80px;height:68px}}
+@media(max-width:680px){.article-page{padding-top:16px;padding-bottom:40px}.article-breadcrumb{margin-bottom:15px;font-size:9px}.article-layout{grid-template-columns:1fr;gap:18px}.article-header h1{font-size:32px}.article-deck{font-size:14px}.article-demo-label{font-size:6px}.article-hero img{max-height:300px}.article-share{flex-wrap:wrap}.article-share>b{width:100%;margin-bottom:2px}.article-share button{flex:1;justify-content:center;padding:0 6px;font-size:8px}.article-share button span{display:inline}.article-share .share-native{margin-left:0;flex:0 0 36px}.article-body{padding-top:18px;font-size:15px}.article-body p.article-lead{font-size:17px}.article-body h2{font-size:23px}.related-heading h2{font-size:20px}.related-grid{grid-template-columns:1fr}.related-card{grid-template-columns:90px minmax(0,1fr)}.related-card img{width:90px;height:68px}.article-aside{position:static;grid-template-columns:1fr 1fr}.aside-share-card,.aside-about{padding:13px}.aside-share-card h2{font-size:16px}}
+@media(max-width:420px){.article-aside{grid-template-columns:1fr}.article-demo-label{display:none}.article-share button{font-size:7px}.article-share button span{font-size:7px}}
+.article-layout{grid-template-columns:minmax(0,780px) 300px;gap:32px;justify-content:space-between}.article-main{width:100%}.article-header h1{max-width:850px}.article-byline{padding:9px 0}.article-share{margin-top:9px}.article-body{max-width:720px;padding-top:21px}.article-body p{font-size:16px;line-height:1.82;text-align:left}.article-body p.article-lead{font-size:17px;font-weight:400}.article-body .article-end{display:none}.more-stories{margin:27px 0 6px;padding:17px 18px;border:1px solid #e8e8e8;border-top:3px solid #bb1919;background:#fff}.more-stories .related-heading{margin-bottom:7px}.more-stories .related-heading h2{font-size:21px}.more-story-row{display:grid;grid-template-columns:118px minmax(0,1fr);gap:13px;align-items:center;padding:11px 0;border-top:1px solid #eee}.more-story-row>img{width:118px;height:77px;object-fit:cover}.more-story-row .tag{font-size:8px}.more-story-row h3{margin:3px 0;color:#30343a;font:700 15px/1.2 'Source Sans 3',sans-serif}.more-story-row small{color:#898f96;font-size:8px}.article-sidebar{position:sticky;top:72px;display:grid;gap:13px}.sidebar-widget{padding:15px;border:1px solid #e8e8e8;border-radius:4px;background:#fff}.sidebar-widget>h2,.archive-widget>summary{margin:0 0 11px;color:#2b2f34;font:700 16px 'Source Sans 3',sans-serif}.search-widget form{display:flex;height:34px}.search-widget input{min-width:0;flex:1;padding:0 9px;border:1px solid #dedede;border-right:0;border-radius:3px 0 0 3px;font:10px 'Lato',sans-serif}.search-widget form button{width:37px;border:0;border-radius:0 3px 3px 0;background:#bb1919;color:white;font-size:18px}.recent-list{display:grid}.recent-item{display:grid;grid-template-columns:60px minmax(0,1fr);gap:9px;padding:9px 0;border-top:1px solid #eee}.recent-item:first-child{border-top:0}.recent-item img{width:60px;height:49px;object-fit:cover}.recent-item b,.recent-item small{display:block}.recent-item b{display:-webkit-box;overflow:hidden;color:#363a3f;font:600 11px/1.2 'Source Sans 3',sans-serif;-webkit-box-orient:vertical;-webkit-line-clamp:3}.recent-item small{margin-top:4px;color:#878d94;font-size:8px}.sidebar-empty{margin:4px 0;color:#8b9096;font-size:9px}.archive-widget>summary{display:flex;align-items:center;justify-content:space-between;margin:0;list-style:none;cursor:pointer}.archive-widget>summary::-webkit-details-marker{display:none}.archive-widget>summary:after{content:'⌄';color:#888}.archive-widget[open]>summary{margin-bottom:10px}.archive-widget>ul,.category-sidebar-list{display:grid;gap:0;margin:0;padding:0;list-style:none}.archive-widget li,.category-sidebar-list li{padding:5px 0;border-top:1px solid #f0f0f0}.archive-widget a,.category-sidebar-list a{color:#626971;font-size:9px}.archive-widget a:hover,.category-sidebar-list a:hover{color:#bb1919}.archive-more{margin-top:9px;padding:0;border:0;background:none;color:#a41f1f;font-size:8px;text-decoration:underline;cursor:pointer}.sidebar-about{display:grid;grid-template-columns:37px 1fr;align-items:center;column-gap:9px}.sidebar-about .about-bp{grid-row:span 2;margin:0}.sidebar-about>b{font:700 12px 'Source Sans 3',sans-serif}.sidebar-about p{grid-column:1/-1;margin:10px 0 0}.recommended-section{margin-top:38px;padding-top:20px;border-top:1px solid #e5e5e5}.recommended-section .related-heading{margin-bottom:14px}.recommended-section .related-heading h2{font-size:25px}.recommended-section .recommended-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:13px}.recommended-section .recommended-card{display:flex;min-width:0;flex-direction:column;overflow:hidden;border:1px solid #e8e8e8;border-radius:4px;background:#fff;transition:box-shadow .2s,transform .2s}.recommended-section .recommended-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px #1112}.recommended-section .recommended-image{height:142px;position:relative;overflow:hidden;background:#eee}.recommended-section .recommended-image img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .2s}.recommended-section .recommended-card:hover img{transform:scale(1.04)}.recommended-section .recommended-image .tag{position:absolute;bottom:0;left:0;padding:6px 8px;background:#bb1919;color:#fff;font-size:8px}.recommended-section .recommended-copy{flex:1;padding:11px}.recommended-section .recommended-copy h3{display:-webkit-box;min-height:54px;overflow:hidden;margin:0 0 9px;color:#30343a;font:700 13px/1.25 'Source Sans 3',sans-serif;-webkit-box-orient:vertical;-webkit-line-clamp:3}.recommended-section .recommended-copy small{color:#888;font-size:9px}.article-share .share-x{background:#292929;color:#fff;border-color:#292929}.article-share .share-facebook{background:#bb1919;color:#fff;border-color:#bb1919}.article-share .share-whatsapp{background:#fff;border-color:#ddd;color:#bb1919}
+@media(max-width:1000px){.article-layout{grid-template-columns:minmax(0,1fr) 270px;gap:20px}.recommended-section .recommended-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:680px){.article-layout{grid-template-columns:1fr;gap:18px}.article-header h1{font-size:31px}.article-sidebar{position:static;grid-template-columns:1fr 1fr}.sidebar-widget{padding:12px}.more-stories{padding:13px}.more-story-row{grid-template-columns:95px minmax(0,1fr);gap:10px}.more-story-row>img{width:95px;height:69px}.more-story-row h3{font-size:13px}.recommended-section .recommended-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.recommended-section .recommended-image{height:130px}.recommended-section .recommended-copy h3{font-size:12px}.article-share button{font-size:8px}}
+@media(max-width:420px){.article-sidebar{grid-template-columns:1fr}.recommended-section .recommended-grid{grid-template-columns:1fr 1fr}.recommended-section .recommended-image{height:105px}.article-share button{gap:4px;padding:0 5px}.article-share button span{font-size:7px}}
+</style>
