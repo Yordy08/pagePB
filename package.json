@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "nuxt dev --host 127.0.0.1 --port 4517",
-    "build": "nuxt build",
+    "build": "node ./node_modules/nuxt/bin/nuxt.mjs build",
     "preview": "nuxt preview"
   },
   "dependencies": {
