@@ -566,7 +566,7 @@ const _routes = [
   {
     name: "index",
     path: "/",
-    component: () => import("./_nuxt/index-Yqfh6BcQ.js")
+    component: () => import("./_nuxt/index-BuFWk7ER.js")
   },
   {
     name: "login",
